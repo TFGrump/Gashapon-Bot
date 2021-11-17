@@ -1,7 +1,7 @@
 from discord.ext.commands import Bot
 
 bot = Bot(command_prefix="~")
-TOKEN = 'OTEwNTgyMTYzMzc4OTQxOTUy.YZU7uQ.KrlZ-qE1CT73s4ZsuMD5u3QkN0Y'
+TOKEN = ''
 
 
 async def on_ready():
