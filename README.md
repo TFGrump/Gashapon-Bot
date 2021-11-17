@@ -1,1 +1,2 @@
-# Gashapon-Bot
+# Gashapon-Bot    
+A Discord Bot
