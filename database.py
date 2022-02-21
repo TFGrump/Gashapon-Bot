@@ -26,6 +26,12 @@ user_table_name = "users"
 
 
 def init_tables(db):
+    """
+    Initialized the hero, unit, and user tables in the database.
+    This should only be run once. 
+    params:
+        db - the database to initialize the tables in
+    """
     def list_to_sql_create_table_cmd(name, lis):
         cols = lis[0] + " PRIMARY KEY"
         for e in lis[1:]:
@@ -47,6 +53,13 @@ def init_tables(db):
     return
 
 def open_db(filename):
+    """
+    Opens the database
+    params:
+        - filename - the filename of the SQLite database
+    returns:
+        a SQLite3 connection to the database contained in the file
+    """
     db = sqlite3.connect(filename)
     return db
 
@@ -54,24 +67,55 @@ def open_db(filename):
 # basic lookup functions
 
 def lookup_user(db, user_id):
+    """
+    Looks up the user in the database.
+    params:
+        - db      - the database to look for the user in
+        - user_id - the id of the user to look for
+    returns:
+        a tuple of the attributes of the user 
+    """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
     user = cur.fetchone()
     return user
 
 def lookup_hero(db, name):
+    """
+    Looks up a hero in the database.
+    params:
+        - db      - the database to look for the hero in
+        - name    - the name of the hero
+    returns:
+        a tuple of the attributes of the hero
+    """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = :0", (name,))
     hero = cur.fetchone()
     return hero
 
 def lookup_all_heroes(db):
+    """
+    Looks up all the heroes in the database. 
+    params:
+        - db - the database to look for heroes in
+    returns:
+        a list of tuples of hero attributes
+    """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {hero_table_name}")
     heroes = cur.fetchall()
     return heroes
 
 def lookup_units_for_user(db, user_id):
+    """
+    Looks up all the units owned by a particular user
+    params:
+        - db - the database to look for units in
+        - user_id - whose units to look up
+    returns:
+        a list of tuples of unit attributes
+    """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = :0", (user_id,))
     units = cur.fetchall()
@@ -80,12 +124,26 @@ def lookup_units_for_user(db, user_id):
 # basic adding functions
 
 def add_hero(db, name):
+    """
+    Adds a hero to the database. 
+    params:
+        - db      - the database to add the hero to
+        - name    - the name of the hero 
+    """
     cur = db.cursor()
     cur.execute(f"INSERT INTO {hero_table_name} (name) VALUES (:0)", (name,))
     db.commit()
     return
 
 def add_unit(db, owner_id, hero_id, add_user=True):
+    """
+    Adds a unit to the database.
+    params:
+        - db        - the database to add the unit to
+        - owner_id  - the id of the owner of the new hero
+        - hero_id   - the type of hero that this unit is
+        - add_user  - if true, adds the user owner_id to the database 
+    """
     if add_user:
         if lookup_user(db, owner_id) == None:
             add_user(db, owner_id)
@@ -97,6 +155,12 @@ def add_unit(db, owner_id, hero_id, add_user=True):
     return
 
 def add_user(db, user_id):
+    """
+    Adds a user to the database
+    params:
+        - db        - the database to add the user to
+        - user_id   - the id of the user
+    """
     cur = db.cursor()
     cur.execute(f"INSERT INTO {user_table_name} (id, join_timestamp, orb_count) " 
             f"VALUES (:0, datetime('now'), 0)", (user_id,))
@@ -106,7 +170,12 @@ def add_user(db, user_id):
 
 # more complicated functions
 
-def update_user_orb_count(db, user_id, difference):
+def update_user_orb_count(db, user_id, change):
+    """
+    Updates the orb count of a user by adding to it.
+    params:
+        db 
+    """
     user = lookup_user(db, user_id)
     orb_count = user[2]
     
