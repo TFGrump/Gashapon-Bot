@@ -55,13 +55,13 @@ def open_db(filename):
 
 def lookup_user(db, user_id):
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {user_table_name} WHERE id = '{user_id}'")
+    cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
     user = cur.fetchone()
     return user
 
 def lookup_hero(db, name):
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = '{name}'")
+    cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = :0", (name,))
     hero = cur.fetchone()
     return hero
 
@@ -73,7 +73,7 @@ def lookup_all_heroes(db):
 
 def lookup_units_for_user(db, user_id):
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = '{user_id}'")
+    cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = :0", (user_id,))
     units = cur.fetchall()
     return units
 
@@ -81,7 +81,7 @@ def lookup_units_for_user(db, user_id):
 
 def add_hero(db, name):
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {hero_table_name} (name) VALUES ('{name}')")
+    cur.execute(f"INSERT INTO {hero_table_name} (name) VALUES (:0)", (name,))
     db.commit()
     return
 
@@ -92,14 +92,14 @@ def add_unit(db, owner_id, hero_id, add_user=True):
 
     cur = db.cursor()
     cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, birth_timestamp) " 
-                f"VALUES ('{owner_id}',{hero_id}, datetime('now'))")
+            f"VALUES (:0, :1, datetime('now'))", (owner_id, hero_id))
     db.commit()
     return
 
 def add_user(db, user_id):
     cur = db.cursor()
     cur.execute(f"INSERT INTO {user_table_name} (id, join_timestamp, orb_count) " 
-                f"VALUES ('{user_id}', datetime('now'), 0)")
+            f"VALUES (:0, datetime('now'), 0)", (user_id,))
     db.commit()
     return
 
@@ -117,6 +117,6 @@ def update_user_orb_count(db, user_id, difference):
         return False
 
     cur = db.cursor()
-    cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = '{user_id}'")
+    cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id,))
     db.commit()
     return True
