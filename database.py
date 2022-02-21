@@ -182,6 +182,10 @@ def update_user_orb_count(db, user_id, change):
         True if the database was updated, False otherwise
     """
     user = lookup_user(db, user_id)
+    
+    if user is None:
+        return False
+
     orb_count = user[2]
     
     orb_count += difference
