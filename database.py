@@ -27,7 +27,7 @@ user_table_name = "users"
 
 def init_tables(db):
     """
-    Initialized the hero, unit, and user tables in the database.
+    Initializes the hero, unit, and user tables in the database
     This should only be run once. 
     params:
         db - the database to initialize the tables in
@@ -125,7 +125,7 @@ def lookup_units_for_user(db, user_id):
 
 def add_hero(db, name):
     """
-    Adds a hero to the database. 
+    Adds a hero to the database
     params:
         - db      - the database to add the hero to
         - name    - the name of the hero 
@@ -137,7 +137,7 @@ def add_hero(db, name):
 
 def add_unit(db, owner_id, hero_id, add_user=True):
     """
-    Adds a unit to the database.
+    Adds a unit to the database
     params:
         - db        - the database to add the unit to
         - owner_id  - the id of the owner of the new hero
@@ -172,9 +172,14 @@ def add_user(db, user_id):
 
 def update_user_orb_count(db, user_id, change):
     """
-    Updates the orb count of a user by adding to it.
+    Updates the orb count of a user by adding to it
+    Orb counts cannot go below 0 and orbs cannot be given or taken away from non-existent users.
     params:
-        db 
+        db - the database to check for the user in
+        user_id - the user whose orbs we want to update
+        change - the change in orbs
+    returns:
+        True if the database was updated, False otherwise
     """
     user = lookup_user(db, user_id)
     orb_count = user[2]
