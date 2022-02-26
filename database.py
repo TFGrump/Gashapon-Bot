@@ -30,7 +30,7 @@ def init_tables(db):
     Initializes the hero, unit, and user tables in the database
     This should only be run once. 
     params:
-        db - the database to initialize the tables in
+        - db - the database to initialize the tables in
     """
     def list_to_sql_create_table_cmd(name, lis):
         cols = lis[0] + " PRIMARY KEY"
@@ -175,9 +175,9 @@ def update_user_orb_count(db, user_id, change):
     Updates the orb count of a user by adding to it
     Orb counts cannot go below 0 and orbs cannot be given or taken away from non-existent users.
     params:
-        db - the database to check for the user in
-        user_id - the user whose orbs we want to update
-        change - the change in orbs
+        - db - the database to check for the user in
+        - user_id - the user whose orbs we want to update
+        - change - the change in orbs
     returns:
         True if the database was updated, False otherwise
     """
@@ -188,7 +188,7 @@ def update_user_orb_count(db, user_id, change):
 
     orb_count = user[2]
     
-    orb_count += difference
+    orb_count += change
     
     # check if this is a valid update
     if orb_count < 0:
