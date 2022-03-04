@@ -2,7 +2,7 @@ from discord.ext.commands import Bot
 import random
 
 bot = Bot(command_prefix="~")
-TOKEN = 'OTEwNTgyMTYzMzc4OTQxOTUy.YZU7uQ.p00R1CL7Ju6UWNVm1oHcfyq5keQ'
+TOKEN = ''
 
 
 pools = "[REDACTED]"
