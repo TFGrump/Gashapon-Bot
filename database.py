@@ -6,7 +6,7 @@ import sqlite3
 # the first column is the primary key
 # if you modify these lists in ways other than appending to them, you need to change the functions
 hero_attrs = ['id INTEGER', 
-              'name text NOT NULL'
+              'name text NOT NULL',
               'release_ts DATE NOT NULL']
 
 user_attrs = ['id BLOB', 
@@ -26,6 +26,55 @@ hero_table_name = "heroes"
 unit_table_name = "units"
 user_table_name = "users"
 
+def _tuple_to_hero_dict(t):
+    d = {
+            "id": t[0],
+            "name": t[1],
+            "release_ts": t[2]
+        }
+    return d
+
+def _tuple_list_to_hero_dicts(l):
+    ds = []
+
+    for h in l:
+        ds.append(_tuple_to_hero_dict(h))
+
+    return ds
+
+def _tuple_to_user_dict(t):
+    d = {
+            "id": t[0],
+            "join_ts": t[1],
+            "orb_count": t[2]
+        }
+    return d
+
+def _tuple_list_to_user_dicts(l):
+    ds = []
+
+    for u in l:
+        ds.append(_tuple_to_user_dict(u))
+
+    return ds
+
+def _tuple_to_unit_dict(t):
+    d = {
+            "id": t[0],
+            "owner_id": t[1],
+            "hero_id": t[2],
+            "obtain_ts": t[3],
+            "level": t[4]
+        }
+    return d
+
+def _tuple_list_to_unit_dicts(l):
+    ds = []
+
+    for u in l:
+        ds.append(_tuple_to_unit_dict(u))
+
+    return ds
 
 def init_tables(db):
     """
@@ -80,7 +129,7 @@ def lookup_user(db, user_id):
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
     user = cur.fetchone()
-    return user
+    return _tuple_to_user_dict(user)
 
 def lookup_hero(db, name):
     """
@@ -94,7 +143,7 @@ def lookup_hero(db, name):
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = :0", (name,))
     hero = cur.fetchone()
-    return hero
+    return _tuple_to_hero_dict(hero)
 
 def lookup_all_heroes(db):
     """
@@ -107,7 +156,8 @@ def lookup_all_heroes(db):
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {hero_table_name}")
     heroes = cur.fetchall()
-    return heroes
+    
+    return _tuple_list_to_hero_dicts(heroes)
 
 def lookup_units_for_user(db, user_id):
     """
@@ -121,7 +171,9 @@ def lookup_units_for_user(db, user_id):
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = :0", (user_id,))
     units = cur.fetchall()
-    return units
+    
+
+    return _tuple_list_to_unit_dicts(units)
 
 # basic adding functions
 
@@ -133,7 +185,7 @@ def add_hero(db, name):
         - name    - the name of the hero 
     """
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now))", (name,))
+    cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now'))", (name,))
     db.commit()
     return
 
