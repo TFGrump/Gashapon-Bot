@@ -6,16 +6,18 @@ import sqlite3
 # the first column is the primary key
 # if you modify these lists in ways other than appending to them, you need to change the functions
 hero_attrs = ['id INTEGER', 
-              'name text NOT NULL']
+              'name text NOT NULL'
+              'release_ts DATE NOT NULL']
 
 user_attrs = ['id BLOB', 
-              'join_timestamp DATE NOT NULL', 
+              'join_ts DATE NOT NULL', 
               'orb_count INTEGER NOT NULL']
 
 unit_attrs = ['id INTEGER',
               'owner_id BLOB NOT NULL',
               'hero_id INTEGER NOT NULL',
-              'birth_timestamp DATE NOT NULL',
+              'obtain_ts DATE NOT NULL',
+              'level INTEGER NOT NULL', 
               'FOREIGN KEY(owner_id) REFERENCES user(id)', 
               'FOREIGN KEY(hero_id) REFERENCES heroes(id)'] 
 
@@ -131,26 +133,27 @@ def add_hero(db, name):
         - name    - the name of the hero 
     """
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {hero_table_name} (name) VALUES (:0)", (name,))
+    cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now))", (name,))
     db.commit()
     return
 
-def add_unit(db, owner_id, hero_id, add_user=True):
+def add_unit(db, owner_id, hero_id, level=0, add_user=True):
     """
     Adds a unit to the database
     params:
         - db        - the database to add the unit to
         - owner_id  - the id of the owner of the new hero
         - hero_id   - the type of hero that this unit is
-        - add_user  - if true, adds the user owner_id to the database 
+        - level     - the initial level of the unit, defaults to 0
+        - add_user  - if true, adds the user owner_id to the database, defaults to True 
     """
     if add_user:
         if lookup_user(db, owner_id) == None:
             add_user(db, owner_id)
 
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, birth_timestamp) " 
-            f"VALUES (:0, :1, datetime('now'))", (owner_id, hero_id))
+    cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, obtain_ts, level) " 
+            f"VALUES (:0, :1, datetime('now'), :2)", (owner_id, hero_id, level))
     db.commit()
     return
 
@@ -162,7 +165,7 @@ def add_user(db, user_id):
         - user_id   - the id of the user
     """
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {user_table_name} (id, join_timestamp, orb_count) " 
+    cur.execute(f"INSERT INTO {user_table_name} (id, join_ts, orb_count) " 
             f"VALUES (:0, datetime('now'), 0)", (user_id,))
     db.commit()
     return
