@@ -1,4 +1,5 @@
-import sqlite3
+import sqlite3     # for the database  
+import numpy as np # for summon
 
 # database configuration variables
 
@@ -11,7 +12,9 @@ hero_attrs = ['id INTEGER',
 
 user_attrs = ['id BLOB', 
               'join_ts DATE NOT NULL', 
-              'orb_count INTEGER NOT NULL']
+              'orb_count INTEGER DEFAULT 0',
+              'ascendent_shard_count INTEGER DEFAULT 0',
+              'level_up_shard_count INTEGER DEFAULT 0']
 
 unit_attrs = ['id INTEGER',
               'owner_id BLOB NOT NULL',
@@ -21,10 +24,13 @@ unit_attrs = ['id INTEGER',
               'FOREIGN KEY(owner_id) REFERENCES user(id)', 
               'FOREIGN KEY(hero_id) REFERENCES heroes(id)'] 
 
+pool_attrs = ['id INTEGER',
+              'name text NOT NULL']
 
 hero_table_name = "heroes"
 unit_table_name = "units"
 user_table_name = "users"
+pool_table_name = "pools"
 
 def _tuple_to_hero_dict(t):
     d = {
@@ -46,7 +52,9 @@ def _tuple_to_user_dict(t):
     d = {
             "id": t[0],
             "join_ts": t[1],
-            "orb_count": t[2]
+            "orb_count": t[2],
+            "ascendent_shard_count": t[3],
+            "level_up_shard_count": t[4]
         }
     return d
 
@@ -92,14 +100,16 @@ def init_tables(db):
         return command
         
     # convert the attribute lists into a SQL create table command
-    hero_cmd = list_to_sql_create_table_cmd("heroes", hero_attrs)
-    user_cmd = list_to_sql_create_table_cmd("users", user_attrs)
-    unit_cmd = list_to_sql_create_table_cmd("units", unit_attrs)
+    hero_cmd = list_to_sql_create_table_cmd(hero_table_name, hero_attrs)
+    user_cmd = list_to_sql_create_table_cmd(user_table_name, user_attrs)
+    unit_cmd = list_to_sql_create_table_cmd(unit_table_name, unit_attrs)
+    pool_cmd = list_to_sql_create_table_cmd(pool_table_name, pool_attrs)
 
     cur = db.cursor()
     cur.execute(hero_cmd)
     cur.execute(user_cmd)
     cur.execute(unit_cmd)
+    cur.execute(pool_cmd)
     db.commit()
     return
 
@@ -124,7 +134,7 @@ def lookup_user(db, user_id):
         - db      - the database to look for the user in
         - user_id - the id of the user to look for
     returns:
-        a tuple of the attributes of the user 
+        a dict of the attributes of the user 
     """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
@@ -138,7 +148,7 @@ def lookup_hero(db, name):
         - db      - the database to look for the hero in
         - name    - the name of the hero
     returns:
-        a tuple of the attributes of the hero
+        a dict of the attributes of the hero
     """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = :0", (name,))
@@ -147,14 +157,14 @@ def lookup_hero(db, name):
 
 def lookup_all_heroes(db):
     """
-    Looks up all the heroes in the database. 
+    looks up all the heroes in the database. 
     params:
         - db - the database to look for heroes in
     returns:
-        a list of tuples of hero attributes
+        a list of dicts of hero attributes
     """
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {hero_table_name}")
+    cur.execute(f"select * from {hero_table_name}")
     heroes = cur.fetchall()
     
     return _tuple_list_to_hero_dicts(heroes)
@@ -166,14 +176,34 @@ def lookup_units_for_user(db, user_id):
         - db - the database to look for units in
         - user_id - whose units to look up
     returns:
-        a list of tuples of unit attributes
+        a list of dicts of unit attributes
     """
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = :0", (user_id,))
     units = cur.fetchall()
     
-
     return _tuple_list_to_unit_dicts(units)
+
+def lookup_all_pools(db):
+    """
+    looks up all the pools in the database. 
+    params:
+        - db - the database to look for heroes in
+    returns:
+        a list of dicts of pool attributes
+    """
+    cur = db.cursor()
+    cur.execute(f"select id, name from {pool_table_name}")
+    pools = cur.fetchall()
+    pool_dicts = []
+
+    for pool in pools:
+        pool_dicts.append({
+            "id": pool[0],
+            "name": pool[1]
+        })
+    
+    return pool_dicts
 
 # basic adding functions
 
@@ -185,7 +215,16 @@ def add_hero(db, name):
         - name    - the name of the hero 
     """
     cur = db.cursor()
+    
+    # add hero to hero table
     cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now'))", (name,))
+
+
+    cur.execute(f"SELECT id, MAX(release_ts) FROM {hero_table_name} WHERE name = :0", (name,))
+    pool_col_name = "ID" + str(cur.fetchone()[0])
+
+    # add corresponding column into pool table
+    cur.execute(f"ALTER TABLE {pool_table_name} ADD COLUMN {pool_col_name} INTEGER DEFAULT 0")
     db.commit()
     return
 
@@ -217,13 +256,88 @@ def add_user(db, user_id):
         - user_id   - the id of the user
     """
     cur = db.cursor()
-    cur.execute(f"INSERT INTO {user_table_name} (id, join_ts, orb_count) " 
-            f"VALUES (:0, datetime('now'), 0)", (user_id,))
+    cur.execute(f"INSERT INTO {user_table_name} (id, join_ts) " 
+            f"VALUES (:0, datetime('now'))", (user_id,))
     db.commit()
     return
 
+def add_pool(db, name, drop_rates):
+    """
+    Adds a pool to the dataabse
+    params: 
+        - db            - the database to add the pool to
+        - name          - the name of the pool
+        - drop_rates    - a collection of tuples of the form (hero_id, drop_rates) 
+
+    note: a larger drop-rate means that the hero type will be more common
+    """
+
+    col_names = []
+    col_values = [name]
+
+    for id, value in drop_rates:
+        col_names.append("ID" + str(id))
+        col_values.append(value)
+
+    # hacking together our insert command
+    cmd = f"INSERT INTO {pool_table_name} (name"
+    
+    # add the column names to add to our INSERT
+    for name in col_names:
+        cmd += ", " + str(name)
+    
+    cmd += f") VALUES ("
+    cmd += ":0"
+    for i in range(1, len(col_values)):
+        cmd += ", :" + str(i)
+    cmd += ")"
+    print(cmd)
+    cur = db.cursor()
+    cur.execute(cmd, col_values)
+    db.commit()
+
 
 # more complicated functions
+
+def summon_unit(db, pool_id, user_id, unit_level = 0):
+    """
+    Summons a unit from a pool based on the drop-rates
+    params:
+        - db            - the database to use
+        - pool_id       - the pool to pull from
+        - user_id       - the user to give the unit to
+        - unit_level    - the level of the unit, defaults to 0
+    returns:
+        a dict of the newly summoned unit's attributes
+    """
+
+    cur = db.cursor()
+    cur.execute(f"SELECT * FROM {pool_table_name} WHERE id = :0", (pool_id,))
+    
+    # doing this in numpy to make our lives easier
+    pool = np.array(cur.fetchone()[2:])
+    total = np.sum(pool)
+    threshold = np.random.randint(0, total)
+    
+    running_sum = 0
+    i = 0
+    while running_sum < threshold and i < len(pool) - 1:
+        running_sum += pool[i]
+        i += 1
+   
+    # unit IDs start at 1
+    unit_id = i + 1
+
+    add_unit(db, user_id, i + 1, unit_level, add_user = False)
+    
+    # UPDATE THIS WHEN YOU UPDATE THE UNIT TABLE
+    cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level FROM {unit_table_name} WHERE hero_id = :0", 
+               (i,))
+    unit = cur.fetchone()
+    db.commit()
+    
+    return _tuple_to_unit_dict(unit)
+
 
 def update_user_orb_count(db, user_id, change):
     """
@@ -241,7 +355,7 @@ def update_user_orb_count(db, user_id, change):
     if user is None:
         return False
 
-    orb_count = user[2]
+    orb_count = user['orb_count']
     
     orb_count += change
     
@@ -250,6 +364,6 @@ def update_user_orb_count(db, user_id, change):
         return False
 
     cur = db.cursor()
-    cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id,))
+    cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id, ))
     db.commit()
     return True
