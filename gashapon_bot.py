@@ -7,7 +7,7 @@ bot.load_extension('profile')
 bot.load_extension('summoning')
 bot.load_extension('characters')
 bot.load_extension('expeditions')
-TOKEN = 'OTEwNTgyMTYzMzc4OTQxOTUy.YZU7uQ.bHUVZEgoh16fDhgjIsWnkh7fpX8'
+TOKEN = ''
 
 database = db.open_db('test.db')
 
