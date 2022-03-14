@@ -1,5 +1,6 @@
 import sqlite3     # for the database  
 import numpy as np # for summon
+import exception
 
 # database configuration variables
 
@@ -33,6 +34,9 @@ user_table_name = "users"
 pool_table_name = "pools"
 
 def _tuple_to_hero_dict(t):
+    if t is None:
+        return None
+
     d = {
             "id": t[0],
             "name": t[1],
@@ -49,6 +53,9 @@ def _tuple_list_to_hero_dicts(l):
     return ds
 
 def _tuple_to_user_dict(t):
+    if t is None:
+        return None
+
     d = {
             "id": t[0],
             "join_ts": t[1],
@@ -67,6 +74,9 @@ def _tuple_list_to_user_dicts(l):
     return ds
 
 def _tuple_to_unit_dict(t):
+    if t is None:
+        return None
+    
     d = {
             "id": t[0],
             "owner_id": t[1],
@@ -125,9 +135,9 @@ def open_db(filename):
     return db
 
 
-# basic lookup functions
+# BASIC LOOKUP FUNCTIONS
 
-def lookup_user(db, user_id):
+def lookup_user(db, user_id, add_nonexistent_user=True):
     """
     Looks up the user in the database.
     params:
@@ -136,9 +146,16 @@ def lookup_user(db, user_id):
     returns:
         a dict of the attributes of the user 
     """
+    
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
     user = cur.fetchone()
+
+    if user is None and add_nonexistent_user: 
+        add_user(db, user_id)
+        cur.execute(f"SELECT * FROM {user_table_name} WHERE id = :0", (user_id,))
+        user = cur.fetchone()
+
     return _tuple_to_user_dict(user)
 
 def lookup_hero(db, name):
@@ -205,7 +222,7 @@ def lookup_all_pools(db):
     
     return pool_dicts
 
-# basic adding functions
+# BASIC ADDING FUNCTIONS
 
 def add_hero(db, name):
     """
@@ -214,21 +231,22 @@ def add_hero(db, name):
         - db      - the database to add the hero to
         - name    - the name of the hero 
     """
-    cur = db.cursor()
-    
-    # add hero to hero table
-    cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now'))", (name,))
+    try:
+        cur = db.cursor()
+        
+        # add hero to hero table
+        cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now'))", (name,))
 
+        pool_col_name = "hero_id" + cur.lastrowid
 
-    cur.execute(f"SELECT id, MAX(release_ts) FROM {hero_table_name} WHERE name = :0", (name,))
-    pool_col_name = "ID" + str(cur.fetchone()[0])
+        # add corresponding column into pool table
+        cur.execute(f"ALTER TABLE {pool_table_name} ADD COLUMN {pool_col_name} INTEGER DEFAULT 0")
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
 
-    # add corresponding column into pool table
-    cur.execute(f"ALTER TABLE {pool_table_name} ADD COLUMN {pool_col_name} INTEGER DEFAULT 0")
-    db.commit()
-    return
-
-def add_unit(db, owner_id, hero_id, level=0, add_user=True):
+def add_unit(db, owner_id, hero_id, level=0, add_nonexistent_user=True):
     """
     Adds a unit to the database
     params:
@@ -236,17 +254,24 @@ def add_unit(db, owner_id, hero_id, level=0, add_user=True):
         - owner_id  - the id of the owner of the new hero
         - hero_id   - the type of hero that this unit is
         - level     - the initial level of the unit, defaults to 0
-        - add_user  - if true, adds the user owner_id to the database, defaults to True 
+        - add_user  - if true, adds the user owner_id to the database, defaults to True
+    returns:
+        True if the unit was added
     """
-    if add_user:
+    if add_nonexistent_user:
         if lookup_user(db, owner_id) == None:
-            add_user(db, owner_id)
+            # if we fail to add the user, we failed to add the unit
+            if not add_user(db, owner_id):
+                return False
 
-    cur = db.cursor()
-    cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, obtain_ts, level) " 
+    try:
+        cur = db.cursor()
+        cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, obtain_ts, level) " 
             f"VALUES (:0, :1, datetime('now'), :2)", (owner_id, hero_id, level))
-    db.commit()
-    return
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
 
 def add_user(db, user_id):
     """
@@ -254,12 +279,21 @@ def add_user(db, user_id):
     params:
         - db        - the database to add the user to
         - user_id   - the id of the user
+    return:
+        True if the user was added
     """
-    cur = db.cursor()
-    cur.execute(f"INSERT INTO {user_table_name} (id, join_ts) " 
-            f"VALUES (:0, datetime('now'))", (user_id,))
-    db.commit()
-    return
+    
+    if lookup_user(db, user_id, add_nonexistent_user=False) != None:
+        return False
+
+    try:
+        cur = db.cursor()
+        cur.execute(f"INSERT INTO {user_table_name} (id, join_ts) " 
+                f"VALUES (:0, datetime('now'))", (user_id,))
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
 
 def add_pool(db, name, drop_rates):
     """
@@ -276,7 +310,7 @@ def add_pool(db, name, drop_rates):
     col_values = [name]
 
     for id, value in drop_rates:
-        col_names.append("ID" + str(id))
+        col_names.append("hero_id" + str(id))
         col_values.append(value)
 
     # hacking together our insert command
@@ -291,13 +325,17 @@ def add_pool(db, name, drop_rates):
     for i in range(1, len(col_values)):
         cmd += ", :" + str(i)
     cmd += ")"
-    print(cmd)
-    cur = db.cursor()
-    cur.execute(cmd, col_values)
-    db.commit()
+    
+    try:
+        cur = db.cursor()
+        cur.execute(cmd, col_values)
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
 
 
-# more complicated functions
+# MORE COMPLICATED FUNCTIONS
 
 def summon_unit(db, pool_id, user_id, unit_level = 0):
     """
@@ -328,15 +366,20 @@ def summon_unit(db, pool_id, user_id, unit_level = 0):
     # unit IDs start at 1
     unit_id = i + 1
 
-    add_unit(db, user_id, i + 1, unit_level, add_user = False)
+    # if we fail to add the unit, we summoned nothing
+    if not add_unit(db, user_id, i + 1, unit_level, add_user = False):
+        return None
     
-    # UPDATE THIS WHEN YOU UPDATE THE UNIT TABLE
-    cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level FROM {unit_table_name} WHERE hero_id = :0", 
-               (i,))
-    unit = cur.fetchone()
-    db.commit()
-    
-    return _tuple_to_unit_dict(unit)
+    try:
+        # UPDATE THIS WHEN YOU UPDATE THE UNIT TABLE
+        cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level " \
+                      "FROM {unit_table_name} WHERE hero_id = :0", (i,))
+        unit = cur.fetchone()
+        db.commit()
+        
+        return _tuple_to_unit_dict(unit)
+    except sqlite3.Error:
+        return None
 
 
 def update_user_orb_count(db, user_id, change):
@@ -363,7 +406,10 @@ def update_user_orb_count(db, user_id, change):
     if orb_count < 0:
         return False
 
-    cur = db.cursor()
-    cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id, ))
-    db.commit()
-    return True
+    try:
+        cur = db.cursor()
+        cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id, ))
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
