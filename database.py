@@ -1,6 +1,5 @@
 import sqlite3     # for the database  
 import numpy as np # for summon
-import exception
 
 # database configuration variables
 
