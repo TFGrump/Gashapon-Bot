@@ -157,17 +157,17 @@ def lookup_user(db, user_id, add_nonexistent_user=True):
 
     return _tuple_to_user_dict(user)
 
-def lookup_hero(db, name):
+def lookup_hero(db, id):
     """
     Looks up a hero in the database.
     params:
         - db      - the database to look for the hero in
-        - name    - the name of the hero
+        - id      - the id of the hero
     returns:
         a dict of the attributes of the hero
     """
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {hero_table_name} WHERE name = :0", (name,))
+    cur.execute(f"SELECT * FROM {hero_table_name} WHERE id = :0", (id,))
     hero = cur.fetchone()
     return _tuple_to_hero_dict(hero)
 
@@ -299,7 +299,7 @@ def add_pool(db, name, drop_rates):
     Adds a pool to the dataabse
     params: 
         - db            - the database to add the pool to
-        - name          - the name of the pool
+        - name          - the name of the poolhttps://www.youtube.com/watch?v=LVO8rieyLsY
         - drop_rates    - a collection of tuples of the form (hero_id, drop_rates) 
 
     note: a larger drop-rate means that the hero type will be more common
