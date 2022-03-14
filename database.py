@@ -366,7 +366,7 @@ def summon_unit(db, pool_id, user_id, unit_level = 0):
     unit_id = i + 1
 
     # if we fail to add the unit, we summoned nothing
-    if not add_unit(db, user_id, i + 1, unit_level, add_user = False):
+    if not add_unit(db, user_id, i + 1, unit_level, add_nonexistent_user=False):
         return None
     
     try:
@@ -392,7 +392,7 @@ def update_user_orb_count(db, user_id, change):
     returns:
         True if the database was updated, False otherwise
     """
-    user = lookup_user(db, user_id, add_nonexistent_user=False)
+    user = lookup_user(db, user_id, add_nonexistent_user=Fale)
     
     if user is None:
         return False
