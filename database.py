@@ -236,7 +236,7 @@ def add_hero(db, name):
         # add hero to hero table
         cur.execute(f"INSERT INTO {hero_table_name} (name, release_ts) VALUES (:0, datetime('now'))", (name,))
 
-        pool_col_name = "hero_id" + cur.lastrowid
+        pool_col_name = "hero_id" + str(cur.lastrowid)
 
         # add corresponding column into pool table
         cur.execute(f"ALTER TABLE {pool_table_name} ADD COLUMN {pool_col_name} INTEGER DEFAULT 0")
