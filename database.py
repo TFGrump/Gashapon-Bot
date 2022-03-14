@@ -392,7 +392,7 @@ def update_user_orb_count(db, user_id, change):
     returns:
         True if the database was updated, False otherwise
     """
-    user = lookup_user(db, user_id)
+    user = lookup_user(db, user_id, add_nonexistent_user=False)
     
     if user is None:
         return False
