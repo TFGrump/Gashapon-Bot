@@ -13,7 +13,7 @@ hero_attrs = ['id INTEGER',
 user_attrs = ['id BLOB', 
               'join_ts DATE NOT NULL', 
               'orb_count INTEGER DEFAULT 0',
-              'ascendent_shard_count INTEGER DEFAULT 0',
+              'ascendant_shard_count INTEGER DEFAULT 0',
               'level_up_shard_count INTEGER DEFAULT 0']
 
 unit_attrs = ['id INTEGER',
@@ -59,7 +59,7 @@ def _tuple_to_user_dict(t):
             "id": t[0],
             "join_ts": t[1],
             "orb_count": t[2],
-            "ascendent_shard_count": t[3],
+            "ascendant_shard_count": t[3],
             "level_up_shard_count": t[4]
         }
     return d
@@ -314,7 +314,7 @@ def add_pool(db, name, drop_rates):
     Adds a pool to the dataabse
     params: 
         - db            - the database to add the pool to
-        - name          - the name of the poolhttps://www.youtube.com/watch?v=LVO8rieyLsY
+        - name          - the name of the pool
         - drop_rates    - a collection of tuples of the form (hero_id, drop_rates) 
 
     note: a larger drop-rate means that the hero type will be more common
@@ -407,7 +407,7 @@ def update_user_orb_count(db, user_id, change):
     returns:
         True if the database was updated, False otherwise
     """
-    user = lookup_user(db, user_id, add_nonexistent_user=Fale)
+    user = lookup_user(db, user_id, add_nonexistent_user=False)
     
     if user is None:
         return False
@@ -423,6 +423,73 @@ def update_user_orb_count(db, user_id, change):
     try:
         cur = db.cursor()
         cur.execute(f"UPDATE {user_table_name} SET orb_count = {orb_count} where id = :0", (user_id, ))
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
+
+
+def update_user_ascendant_shards(db, user_id, change):
+    """
+    Updates the shard count of a user by adding to it
+    Shard counts cannot go below 0 and shards cannot be given or taken away from non-existent users.
+    params:
+        - db - the database to check for the user in
+        - user_id - the user whose shards we want to update
+        - change - the change in shards
+    returns:
+        True if the database was updated, False otherwise
+    """
+    user = lookup_user(db, user_id, add_nonexistent_user=False)
+    
+    if user is None:
+        return False
+
+    ascendant_shards = user['ascendant_shard_count']
+    
+    ascendant_shards += change
+    
+    # check if this is a valid update
+    if ascendant_shards < 0:
+        return False
+
+    try:
+        cur = db.cursor()
+        cur.execute(f"UPDATE {user_table_name} SET ascendant_shard_count = {ascendant_shards} where id = :0", 
+                    (user_id, ))
+        db.commit()
+        return True
+    except sqlite3.Error:
+        return False
+
+def update_user_level_up_shards(db, user_id, change):
+    """
+    Updates the shard count of a user by adding to it
+    Shard counts cannot go below 0 and shards cannot be given or taken away from non-existent users.
+    params:
+        - db - the database to check for the user in
+        - user_id - the user whose shards we want to update
+        - change - the change in shards
+    returns:
+        True if the database was updated, False otherwise
+    """
+    user = lookup_user(db, user_id, add_nonexistent_user=False)
+    
+    if user is None:
+        return False
+
+    level_up_shards = user['level_up_shard_count']
+    
+    level_up_shards += change
+    
+    # check if this is a valid update
+    if level_up_shards < 0:
+        return False
+
+    try:
+        cur = db.cursor()
+        cur.execute(f"UPDATE {user_table_name} SET level_up_shard_count = {level_up_shards} where id = :0", 
+                    (user_id, ))
         db.commit()
         return True
     except sqlite3.Error:
