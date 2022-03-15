@@ -75,7 +75,7 @@ def _tuple_list_to_user_dicts(l):
 def _tuple_to_unit_dict(t):
     if t is None:
         return None
-    
+
     d = {
             "id": t[0],
             "owner_id": t[1],
@@ -83,6 +83,7 @@ def _tuple_to_unit_dict(t):
             "obtain_ts": t[3],
             "level": t[4]
         }
+
     return d
 
 def _tuple_list_to_unit_dicts(l):
@@ -92,6 +93,13 @@ def _tuple_list_to_unit_dicts(l):
         ds.append(_tuple_to_unit_dict(u))
 
     return ds
+
+def _augment_unit_dict_with_hero_info(db, unit_dict):
+    hero = lookup_hero(db, unit_dict["hero_id"]) 
+    if hero is None:
+        return None
+    hero.update(unit_dict)
+    return hero
 
 def init_tables(db):
     """
@@ -185,12 +193,13 @@ def lookup_all_heroes(db):
     
     return _tuple_list_to_hero_dicts(heroes)
 
-def lookup_units_for_user(db, user_id):
+def lookup_units_for_user(db, user_id, get_hero_info=True):
     """
     Looks up all the units owned by a particular user
     params:
-        - db - the database to look for units in
-        - user_id - whose units to look up
+        - db            - the database to look for units in
+        - user_id       - whose units to look up
+        - get_hero_info - True 
     returns:
         a list of dicts of unit attributes
     """
@@ -198,7 +207,13 @@ def lookup_units_for_user(db, user_id):
     cur.execute(f"SELECT * FROM {unit_table_name} WHERE owner_id = :0", (user_id,))
     units = cur.fetchall()
     
-    return _tuple_list_to_unit_dicts(units)
+    units = _tuple_list_to_unit_dicts(units)
+
+    # augment the with hero info
+    if get_hero_info:
+        for u in units:
+            u = _augment_unit_dict_with_hero_info(db, u)
+    return units
 
 def lookup_all_pools(db):
     """
