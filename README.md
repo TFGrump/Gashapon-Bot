@@ -7,3 +7,4 @@ This bot is to emulate what a gacha machine would be like if it had Discord as a
 **Database Stuff**
 - [ ] Give user access to summoning pool rates
 - [ ] Implement expeditions
+- [ ] Add two attributes to the hero ('headshots' and 'full_art')
