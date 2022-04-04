@@ -378,21 +378,22 @@ def summon_unit(db, pool_id, user_id, unit_level = 0):
         i += 1
    
     # unit IDs start at 1
-    unit_id = i + 1
+    hero_id = i + 1
 
     # if we fail to add the unit, we summoned nothing
-    if not add_unit(db, user_id, i + 1, unit_level, add_nonexistent_user=False):
+    if not add_unit(db, user_id, hero_id, unit_level, add_nonexistent_user=False):
         return None
     
     try:
         # UPDATE THIS WHEN YOU UPDATE THE UNIT TABLE
         cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level " \
-                      "FROM {unit_table_name} WHERE hero_id = :0", (i,))
+                    f"FROM {unit_table_name} WHERE hero_id = :0", (hero_id,))
         unit = cur.fetchone()
         db.commit()
         
         return _tuple_to_unit_dict(unit)
-    except sqlite3.Error:
+    except sqlite3.Error as e:
+        print(e)
         return None
 
 
