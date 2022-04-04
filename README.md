@@ -5,5 +5,5 @@ This bot is to emulate what a gacha machine would be like if it had Discord as a
 
 ### To-Do list:
 **Database Stuff**
-- [] Give user access to summoning pool rates
-- [] Implement expeditions
+- [ ] Give user access to summoning pool rates
+- [ ] Implement expeditions
