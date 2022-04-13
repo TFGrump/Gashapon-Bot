@@ -1,1 +1,2 @@
-.idea   # to ignore PyCharm's files
+.idea
+__pycache__
