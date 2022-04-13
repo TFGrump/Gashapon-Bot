@@ -5,27 +5,34 @@ import numpy as np # for summon
 
 # the column names and types for each of the three tables
 # the first column is the primary key
-# if you modify these lists in ways other than appending to them, you need to change the functions
-hero_attrs = ['id INTEGER', 
-              'name text NOT NULL',
-              'release_ts DATE NOT NULL']
 
-user_attrs = ['id BLOB', 
-              'join_ts DATE NOT NULL', 
-              'orb_count INTEGER DEFAULT 0',
-              'ascendant_shard_count INTEGER DEFAULT 0',
-              'level_up_shard_count INTEGER DEFAULT 0']
+hero_cols = ['id INTEGER',
+             'name text NOT NULL',
+             'release_ts DATE NOT NULL']
 
-unit_attrs = ['id INTEGER',
-              'owner_id BLOB NOT NULL',
-              'hero_id INTEGER NOT NULL',
-              'obtain_ts DATE NOT NULL',
-              'level INTEGER NOT NULL', 
-              'FOREIGN KEY(owner_id) REFERENCES user(id)', 
-              'FOREIGN KEY(hero_id) REFERENCES heroes(id)'] 
+hero_attrs = []
 
-pool_attrs = ['id INTEGER',
-              'name text NOT NULL']
+user_cols = ['id BLOB',
+             'join_ts DATE NOT NULL',
+             'orb_count INTEGER DEFAULT 0',
+             'ascendant_shard_count INTEGER DEFAULT 0',
+             'level_up_shard_count INTEGER DEFAULT 0']
+
+user_attrs = []
+
+unit_cols = ['id INTEGER',
+             'owner_id BLOB NOT NULL',
+             'hero_id INTEGER NOT NULL',
+             'obtain_ts DATE NOT NULL',
+             'level INTEGER NOT NULL']
+
+unit_attrs = ['FOREIGN KEY(owner_id) REFERENCES user(id)',
+              'FOREIGN KEY(hero_id) REFERENCES heroes(id)']
+
+pool_cols = ['id INTEGER',
+             'name text NOT NULL']
+
+pool_attrs = []
 
 hero_table_name = "heroes"
 unit_table_name = "units"
@@ -33,53 +40,48 @@ user_table_name = "users"
 pool_table_name = "pools"
 
 
-def _tuple_to_hero_dict(t):
-    if t is None:
+def _tuple_to_hero_dict(hero_tuple):
+    if hero_tuple is None:
         return None
 
-    d = {
-            "id": t[0],
-            "name": t[1],
-            "release_ts": t[2]
-        }
-    return d
+    hero_dict = {}
+
+    for ii, col in enumerate(hero_cols):
+        hero_dict[col.split()[0]] = hero_tuple[ii]
+
+    return hero_dict
 
 
 def _tuple_list_to_hero_dicts(list_of_heroes):
     return [_tuple_to_hero_dict(x) for x in list_of_heroes]
 
 
-def _tuple_to_user_dict(t):
-    if t is None:
+def _tuple_to_user_dict(user_tuple):
+    if user_tuple is None:
         return None
 
-    d = {
-            "id": t[0],
-            "join_ts": t[1],
-            "orb_count": t[2],
-            "ascendant_shard_count": t[3],
-            "level_up_shard_count": t[4]
-        }
-    return d
+    user_dict = {}
+
+    for ii, col in enumerate(user_cols):
+        user_dict[col.split()[0]] = user_tuple[ii]
+
+    return user_dict
 
 
 def _tuple_list_to_user_dicts(list_of_users):
     return [_tuple_to_user_dict(x) for x in list_of_users]
 
 
-def _tuple_to_unit_dict(t):
-    if t is None:
+def _tuple_to_unit_dict(unit_tuple):
+    if unit_tuple is None:
         return None
 
-    d = {
-            "id": t[0],
-            "owner_id": t[1],
-            "hero_id": t[2],
-            "obtain_ts": t[3],
-            "level": t[4]
-        }
+    unit_dict = {}
 
-    return d
+    for ii, col in enumerate(unit_cols):
+        unit_dict[col.split()[0]] = unit_tuple[ii]
+
+    return unit_dict
 
 
 def _tuple_list_to_unit_dicts(list_of_units):
@@ -101,19 +103,19 @@ def init_tables(db):
     params:
         - db - the database to initialize the tables in
     """
-    def list_to_sql_create_table_cmd(name, lis):
-        cols = lis[0] + " PRIMARY KEY"
-        for e in lis[1:]:
-            cols += ", " + e
+    def list_to_sql_create_table_cmd(name, cols, attrs):
+        table_attrs = cols[0] + " PRIMARY KEY"
+        for e in cols[1:] + attrs:
+            table_attrs += ", " + e
 
-        command = f"CREATE TABLE {name} ({cols})"
+        command = f"CREATE TABLE {name} ({table_attrs})"
         return command
         
     # convert the attribute lists into a SQL create table command
-    hero_cmd = list_to_sql_create_table_cmd(hero_table_name, hero_attrs)
-    user_cmd = list_to_sql_create_table_cmd(user_table_name, user_attrs)
-    unit_cmd = list_to_sql_create_table_cmd(unit_table_name, unit_attrs)
-    pool_cmd = list_to_sql_create_table_cmd(pool_table_name, pool_attrs)
+    hero_cmd = list_to_sql_create_table_cmd(hero_table_name, hero_cols, hero_attrs)
+    user_cmd = list_to_sql_create_table_cmd(user_table_name, user_cols, user_attrs)
+    unit_cmd = list_to_sql_create_table_cmd(unit_table_name, unit_cols, unit_attrs)
+    pool_cmd = list_to_sql_create_table_cmd(pool_table_name, pool_cols, pool_attrs)
 
     cur = db.cursor()
     cur.execute(hero_cmd)
@@ -312,7 +314,7 @@ def add_user(db, user_id):
 
 def add_pool(db, name, drop_rates):
     """
-    Adds a pool to the dataabse
+    Adds a pool to the database
     params: 
         - db            - the database to add the pool to
         - name          - the name of the pool
@@ -367,18 +369,22 @@ def summon_unit(db, pool_id, user_id, unit_level=0):
     cur = db.cursor()
     cur.execute(f"SELECT * FROM {pool_table_name} WHERE id = :0", (pool_id,))
     
-    # doing this in numpy to make our lives easier
+    # This is basically going to do a single stochastic uniform sample where the weights are the drop rates
+    # Each drop rate corresponds to an interval of the size of the drop rate
     pool = np.array(cur.fetchone()[2:])
     total = np.sum(pool)
+
+    # Select a random number
     threshold = np.random.randint(0, total)
-    
+
+    # Find which interval the random number is in
     running_sum = 0
     i = 0
     while running_sum < threshold and i < len(pool) - 1:
         running_sum += pool[i]
         i += 1
    
-    # unit IDs start at 1
+    # Hero IDs start at 1
     hero_id = i + 1
 
     # if we fail to add the unit, we summoned nothing
