@@ -1,5 +1,5 @@
-import sqlite3     # for the database  
-import numpy as np # for summon
+import sqlite3      # for the database  
+import numpy as np  # for summon
 
 # database configuration variables
 
