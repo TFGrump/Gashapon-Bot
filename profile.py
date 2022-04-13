@@ -10,19 +10,23 @@ class Profile(commands.Cog):
     def __init__(self, bot):
         self.bot = bot
 
-    @commands.command(description='Creates a profile for the user (probably will be removed)',
-                      brief='Makes a profile so you can keep all your progress')
+    @commands.command(
+        description='Creates a profile for the user (probably will be removed)',
+        brief='Makes a profile so you can keep all your progress'
+    )
     async def make_profile(self, ctx):
-        # Determines if a profile needs to be made for a user, then shows it in a user friendly way
+        # Determines if a profile needs to be made for a user, then shows it in a user-friendly way
         if db.add_user(gb.database, ctx.author.name):
             await ctx.send("Your profile has been made.")
         else:
             await ctx.send("You have already made a profile.")
         await self.view_profile(ctx)
 
-    @commands.command(description='Displays various stats on the user profile',
-                      brief='Shows the basics stats of your profile',
-                      pass_context=True)
+    @commands.command(
+        description='Displays various stats on the user profile',
+        brief='Shows the basics stats of your profile',
+        pass_context=True
+    )
     async def view_profile(self, ctx):
         # Grabs the user's profile for the database
         user = db.lookup_user(gb.database, ctx.author.name, add_nonexistent_user=False)
@@ -34,19 +38,26 @@ class Profile(commands.Cog):
             # Used only if the first one did not succeed
             user = db.lookup_user(gb.database, ctx.author.name, add_nonexistent_user=False)
 
-        # Sets up, makes, and sends a user friendly way for reading their profile
+        # Sets up, makes, and sends a user-friendly way for reading their profile
         embed = Embed(title='User Profile')
-        embed.add_field(name=user['id'],
-                        value='Joined: {}\nOrbs : {}\nAscendant Shards : {}\nLevel Up Shards: {}'
-                        .format(user['join_ts'], user['orb_count'], user['ascendant_shard_count'],
-                                user['level_up_shard_count']))
+        embed.add_field(
+            name=user['id'],
+            value='Joined: {}\nOrbs : {}\nAscendant Shards : {}\nLevel Up Shards: {}'.format(
+                user['join_ts'],
+                user['orb_count'],
+                user['ascendant_shard_count'],
+                user['level_up_shard_count']
+            )
+        )
         embed.set_thumbnail(url=ctx.author.avatar_url)
         await ctx.send("Here is your profile:")
         await ctx.send(embed=embed)
 
-    @commands.command(description='Adds tokens used for summoning to the user`s profile',
-                      brief='Used once a day to get some Summoning Tokens',
-                      pass_context=True)
+    @commands.command(
+        description='Adds tokens used for summoning to the user`s profile',
+        brief='Used once a day to get some Summoning Tokens',
+        pass_context=True
+    )
     async def daily_gift(self, ctx):
         # Adds a random amount of tokens (from 5 to 20, inclusive) to the user's profile
         token_amount = random.randrange(5, 21)
@@ -54,29 +65,23 @@ class Profile(commands.Cog):
         await ctx.send("Here are your Summoning Tokens ({}) for today. Use them wisely!".format(token_amount))
         await self.view_profile(ctx)
 
-    @commands.command(description='Displays a list of the characters the user owns',
-                      brief='View collected characters',
-                      pass_context=True)
+    @commands.command(
+        description='Displays a list of the characters the user owns',
+        brief='View collected characters',
+        pass_context=True
+    )
     async def view_collection(self, ctx):
-        # Grabs the characters/units that the user owns
-        units = db.lookup_units_for_user(gb.database, ctx.author.name)
-
-        """
-        Sets up a user friendly way of seeing what units they own.
-
-        I have found out through trial and error (since I did not know about this) that a Discord Embed can only have
-        up to 25 fields, so I figured that having 'pages' being displayed would be the best way to show the user
-        what they got.
-        """
+        # NOTE: Paging is done due to the fact that Discord only allows 25 fields per embed.
+        #       More info on Discord embed limitations: https://discordjs.guide/popular-topics/embeds.html#embed-limits
         page = 1
         embed = Embed(title='Collection: Page {}'.format(page))
         embeds = []
         i = 0
-        for unit in units:
+        for unit in db.lookup_units_for_user(gb.database, ctx.author.name):
             # Grabbing the hero form the database so the character's/unit's name can be accessed.
             hero = db.lookup_hero(gb.database, unit['hero_id'])
             embed.add_field(name=hero['name'], value="Obtained: {}\nLevel: {}".format(unit['obtain_ts'], unit['level']))
-            i = i + 1
+            i += 1
 
             # Makes a new page if all the fields of an Embed are used up.
             if i % 25 == 0:
@@ -86,14 +91,15 @@ class Profile(commands.Cog):
         embeds.append(embed)
 
         # The bot sends 'pages' of the characters/units the user owns
-        await ctx.send("Let me gather your Collection real quick... \n"
-                       "Here they are")
-        for e in embeds:
-            await ctx.send(embed=e)
+        await ctx.send("Let me gather your Collection real quick...\nHere they are")
+        for embed in embeds:
+            await ctx.send(embed=embed)
 
-    @commands.command(description='Adds more space to your Collection so you can collect more characters',
-                      brief='Adds more space to your Collection',
-                      pass_context=True)
+    @commands.command(
+        description='Adds more space to your Collection so you can collect more characters',
+        brief='Adds more space to your Collection',
+        pass_context=True
+    )
     async def expand_collection(self, ctx):
         return await ctx.send("I have made your Collection larger")
 
