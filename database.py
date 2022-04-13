@@ -32,6 +32,7 @@ unit_table_name = "units"
 user_table_name = "users"
 pool_table_name = "pools"
 
+
 def _tuple_to_hero_dict(t):
     if t is None:
         return None
@@ -43,13 +44,10 @@ def _tuple_to_hero_dict(t):
         }
     return d
 
-def _tuple_list_to_hero_dicts(l):
-    ds = []
 
-    for h in l:
-        ds.append(_tuple_to_hero_dict(h))
+def _tuple_list_to_hero_dicts(list_of_heroes):
+    return [_tuple_to_hero_dict(x) for x in list_of_heroes]
 
-    return ds
 
 def _tuple_to_user_dict(t):
     if t is None:
@@ -64,13 +62,10 @@ def _tuple_to_user_dict(t):
         }
     return d
 
-def _tuple_list_to_user_dicts(l):
-    ds = []
 
-    for u in l:
-        ds.append(_tuple_to_user_dict(u))
+def _tuple_list_to_user_dicts(list_of_users):
+    return [_tuple_to_user_dict(x) for x in list_of_users]
 
-    return ds
 
 def _tuple_to_unit_dict(t):
     if t is None:
@@ -86,13 +81,10 @@ def _tuple_to_unit_dict(t):
 
     return d
 
-def _tuple_list_to_unit_dicts(l):
-    ds = []
 
-    for u in l:
-        ds.append(_tuple_to_unit_dict(u))
+def _tuple_list_to_unit_dicts(list_of_units):
+    return [_tuple_to_unit_dict(x) for x in list_of_units]
 
-    return ds
 
 def _augment_unit_dict_with_hero_info(db, unit_dict):
     hero = lookup_hero(db, unit_dict["hero_id"]) 
@@ -100,6 +92,7 @@ def _augment_unit_dict_with_hero_info(db, unit_dict):
         return None
     hero.update(unit_dict)
     return hero
+
 
 def init_tables(db):
     """
@@ -129,6 +122,7 @@ def init_tables(db):
     cur.execute(pool_cmd)
     db.commit()
     return
+
 
 def open_db(filename):
     """
@@ -165,7 +159,8 @@ def lookup_user(db, user_id, add_nonexistent_user=True):
 
     return _tuple_to_user_dict(user)
 
-def lookup_hero(db, id):
+
+def lookup_hero(db, hero_id):
     """
     Looks up a hero in the database.
     params:
@@ -175,9 +170,10 @@ def lookup_hero(db, id):
         a dict of the attributes of the hero
     """
     cur = db.cursor()
-    cur.execute(f"SELECT * FROM {hero_table_name} WHERE id = :0", (id,))
+    cur.execute(f"SELECT * FROM {hero_table_name} WHERE id = :0", (hero_id,))
     hero = cur.fetchone()
     return _tuple_to_hero_dict(hero)
+
 
 def lookup_all_heroes(db):
     """
@@ -192,6 +188,7 @@ def lookup_all_heroes(db):
     heroes = cur.fetchall()
     
     return _tuple_list_to_hero_dicts(heroes)
+
 
 def lookup_units_for_user(db, user_id, get_hero_info=True):
     """
@@ -211,9 +208,9 @@ def lookup_units_for_user(db, user_id, get_hero_info=True):
 
     # augment the with hero info
     if get_hero_info:
-        for u in units:
-            u = _augment_unit_dict_with_hero_info(db, u)
+        units = [_augment_unit_dict_with_hero_info(db, x) for x in units]
     return units
+
 
 def lookup_all_pools(db):
     """
@@ -235,6 +232,7 @@ def lookup_all_pools(db):
         })
     
     return pool_dicts
+
 
 # BASIC ADDING FUNCTIONS
 
@@ -260,6 +258,7 @@ def add_hero(db, name):
     except sqlite3.Error:
         return False
 
+
 def add_unit(db, owner_id, hero_id, level=0, add_nonexistent_user=True):
     """
     Adds a unit to the database
@@ -273,7 +272,7 @@ def add_unit(db, owner_id, hero_id, level=0, add_nonexistent_user=True):
         True if the unit was added
     """
     if add_nonexistent_user:
-        if lookup_user(db, owner_id) == None:
+        if lookup_user(db, owner_id) is None:
             # if we fail to add the user, we failed to add the unit
             if not add_user(db, owner_id):
                 return False
@@ -281,11 +280,12 @@ def add_unit(db, owner_id, hero_id, level=0, add_nonexistent_user=True):
     try:
         cur = db.cursor()
         cur.execute(f"INSERT INTO {unit_table_name} (owner_id, hero_id, obtain_ts, level) " 
-            f"VALUES (:0, :1, datetime('now'), :2)", (owner_id, hero_id, level))
+                    f"VALUES (:0, :1, datetime('now'), :2)", (owner_id, hero_id, level))
         db.commit()
         return True
     except sqlite3.Error:
         return False
+
 
 def add_user(db, user_id):
     """
@@ -297,17 +297,18 @@ def add_user(db, user_id):
         True if the user was added
     """
     
-    if lookup_user(db, user_id, add_nonexistent_user=False) != None:
+    if lookup_user(db, user_id, add_nonexistent_user=False) is not None:
         return False
 
     try:
         cur = db.cursor()
         cur.execute(f"INSERT INTO {user_table_name} (id, join_ts) " 
-                f"VALUES (:0, datetime('now'))", (user_id,))
+                    f"VALUES (:0, datetime('now'))", (user_id,))
         db.commit()
         return True
     except sqlite3.Error:
         return False
+
 
 def add_pool(db, name, drop_rates):
     """
@@ -323,8 +324,8 @@ def add_pool(db, name, drop_rates):
     col_names = []
     col_values = [name]
 
-    for id, value in drop_rates:
-        col_names.append("hero_id" + str(id))
+    for hero_id, value in drop_rates:
+        col_names.append("hero_id" + str(hero_id))
         col_values.append(value)
 
     # hacking together our insert command
@@ -351,7 +352,7 @@ def add_pool(db, name, drop_rates):
 
 # MORE COMPLICATED FUNCTIONS
 
-def summon_unit(db, pool_id, user_id, unit_level = 0):
+def summon_unit(db, pool_id, user_id, unit_level=0):
     """
     Summons a unit from a pool based on the drop-rates
     params:
@@ -386,7 +387,7 @@ def summon_unit(db, pool_id, user_id, unit_level = 0):
     
     try:
         # UPDATE THIS WHEN YOU UPDATE THE UNIT TABLE
-        cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level " \
+        cur.execute(f"SELECT id, owner_id, hero_id, MAX(obtain_ts), level "
                     f"FROM {unit_table_name} WHERE hero_id = :0", (hero_id,))
         unit = cur.fetchone()
         db.commit()
@@ -462,6 +463,7 @@ def update_user_ascendant_shards(db, user_id, change):
         return True
     except sqlite3.Error:
         return False
+
 
 def update_user_level_up_shards(db, user_id, change):
     """
