@@ -51,10 +51,9 @@ class Summoning(commands.Cog):
             embeds = []  # Will be implemented when art is added so the picture of the character can be the "thumbnail"
             number = units_to_be_summoned
 
-            """
-            Summons the desired number of characters/units. It also checks before summoning to see if the user has
-            enough tokens so the user doesn't get any 'free' characters/units.
-            """
+           
+            # Summons the desired number of characters/units. It also checks before summoning to see if the user has
+            # enough tokens so the user doesn't get any 'free' characters/units.
             while number > 0 and token_count >= 5:
                 # Summons the character/unit
                 db.update_user_orb_count(gb.database, ctx.author.name, -5)
