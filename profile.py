@@ -72,7 +72,7 @@ class Profile(commands.Cog):
     )
     async def view_collection(self, ctx):
         # NOTE: Paging is done due to the fact that Discord only allows 25 fields per embed.
-        #       More info on Discord embed limitations: https://discordjs.guide/popular-topics/embeds.html#embed-limits
+        #       More info on Discord embed limitations: https://discord.com/developers/docs/resources/channel#embed-object-embed-limits
         page = 1
         embed = Embed(title='Collection: Page {}'.format(page))
         embeds = []
